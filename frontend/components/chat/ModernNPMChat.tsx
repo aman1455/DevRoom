@@ -50,8 +50,8 @@ const ChatPanels: React.FC<{ currentUser: any }> = ({ currentUser }) => {
   }
 
   const filteredUsers = users
-    .filter((u: any) => u.name.toLowerCase().includes(search.toLowerCase()))
-    .map((u: any) => ({
+    ?.filter((u: any) => u.name.toLowerCase().includes(search.toLowerCase()))
+    ?.map((u: any) => ({
       ...u,
       unread: unseenMessages[u._id || u.id] || 0,
     }))

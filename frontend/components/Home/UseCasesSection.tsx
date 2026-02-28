@@ -22,7 +22,7 @@ export default function UseCasesSection() {
         </div>
         {/* Right Use Cases */}
         <div className="space-y-6">
-          {useCases.map((uc, index) => (
+          {useCases?.map((uc, index) => (
             <div
               key={uc.text}
               className="flex items-center p-4 bg-[#fef6e4] border-4 border-black rounded-sm brutal-shadow hover:brutal-shadow-hover hover:scale-110 hover:-rotate-2 hover:translate-y-[-6px] transition-all duration-500 cursor-pointer group transform-gpu relative"

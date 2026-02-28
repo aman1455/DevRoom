@@ -104,7 +104,7 @@ export default function DocsPage() {
           "⚡ In-Chat Code Execution",
           "👤 Profile Management",
           "🌍 Open Source",
-        ].map((feature, i) => (
+        ]?.map((feature, i) => (
           <div
             key={i}
             className="bg-background border-4 border-black p-6 shadow-[8px_8px_0_0_rgba(0,0,0,1)] hover:-translate-y-1 transition-all"

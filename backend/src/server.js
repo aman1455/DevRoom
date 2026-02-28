@@ -6,6 +6,7 @@ import { connectDB } from "./lib/db.js"
 import userRouter from "../src/routes/user.routes.js"
 // import messageRouter from "./routes/message.routes.js"
 import { Server } from "socket.io"
+import messageRouter from "./routes/message.routes.js"
 
 const app = express()
 const server = http.createServer(app)
@@ -56,21 +57,30 @@ export const io = new Server(server, {
 export const userSocketMap = {}
 
 io.on("connection", (socket) => {
-  const userId = socket.handshake.query.userId
+  const userId = socket.handshake.query.userId 
 
   if (userId) {
-    userSocketMap[userId] = socket.id
+    if (!userSocketMap[userId]) {
+      userSocketMap[userId] = []
+    }
+
+    userSocketMap[userId].push(socket.id)
     console.log(`User connected: ${userId}`)
   }
 
-  // Broadcast online users
-  io.emit("getOnlineUsers", Object.keys(userSocketMap))
+ io.emit("getOnlineUsers", Object.keys(userSocketMap))
 
   socket.on("disconnect", () => {
     if (userId) {
-      console.log(`User disconnected: ${userId}`)
-      delete userSocketMap[userId]
+      userSocketMap[userId] =
+        userSocketMap[userId].filter(id => id !== socket.id)
+
+      if (userSocketMap[userId].length === 0) {
+        delete userSocketMap[userId]
+        console.log(`User disconnected: ${userId}`)
+      }
     }
+
     io.emit("getOnlineUsers", Object.keys(userSocketMap))
   })
 })
@@ -82,7 +92,7 @@ app.use("/api/status", (req, res) => {
   res.status(200).json({ status: "ok" })
 })
 app.use("/api/v1/auth", userRouter)
-// app.use("/api/v1/messages", messageRouter)
+app.use("/api/v1/messages", messageRouter)
 app.use("/", (req, res) => {
   res.send("DevRoom API is running")
 })

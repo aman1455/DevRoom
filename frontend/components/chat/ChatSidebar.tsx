@@ -18,7 +18,6 @@ export default function ChatSidebar({
   search: string
   setSearch: (s: string) => void
 }) {
-  console.log("users", users)
   return (
     <aside className="flex flex-col w-full md:w-80 bg-[#e9d5ff] dark:bg-background border-r-2 border-sidebar-border  h-full">
       {/* Logo */}
@@ -42,7 +41,7 @@ export default function ChatSidebar({
       </div>
       {/* User List */}
       <ul className="flex-1 overflow-y-auto py-2 space-y-1">
-        {users.map((user) => (
+        {users?.map((user) => (
           <li
             key={user._id || user.id}
             onClick={() => onUserSelect(user)}

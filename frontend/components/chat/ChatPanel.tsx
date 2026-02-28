@@ -35,7 +35,7 @@ export default function ChatPanel({
 
   useEffect(() => {
     // Mark unseen messages as seen when displayed
-    messages.forEach((msg: any) => {
+    messages?.forEach((msg: any) => {
       if (!msg.seen && msg.receiverId === currentUserId) {
         markAsSeen(msg._id)
       }
@@ -223,7 +223,7 @@ export default function ChatPanel({
       </div>
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-[#f3e8ff] dark:bg-accent">
-        {messages.map((msg: any, i: number) => {
+        {messages?.map((msg: any, i: number) => {
           const isMe = msg.senderId === currentUserId
           // Format time from createdAt or timestamp
           let time = ""

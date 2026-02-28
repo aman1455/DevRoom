@@ -166,7 +166,7 @@ export default function FeaturesPage() {
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {mainFeatures.map((feature, index) => (
+            {mainFeatures?.map((feature, index) => (
               <div
                 key={index}
                 className={`${feature.bgColor} border-4 border-black p-8 shadow-[8px_8px_0_0_rgba(0,0,0,1)] hover:shadow-[8px_8px_0_0_rgba(0,0,0,1)] transition-all hover:-translate-y-1`}
@@ -181,7 +181,7 @@ export default function FeaturesPage() {
                   {feature.description}
                 </p>
                 <div className="space-y-2">
-                  {feature.details.map((detail, idx) => (
+                  {feature.details?.map((detail, idx) => (
                     <div
                       key={idx}
                       className="flex items-center text-sm font-bold text-gray-700"
@@ -209,7 +209,7 @@ export default function FeaturesPage() {
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {additionalFeatures.map((feature, index) => (
+            {additionalFeatures?.map((feature, index) => (
               <div
                 key={index}
                 className="bg-white border-4 border-black p-6 shadow-[8px_8px_0_0_rgba(0,0,0,1)] hover:shadow-[6px_6px_0_0_rgba(0,0,0,1)] transition-all hover:-translate-y-1"

@@ -149,7 +149,7 @@ export default function TestimonialsSection() {
           Just for Fun — Leave a Note!
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {testimonials.map((t, index) => (
+          {testimonials?.map((t, index) => (
             <div
               key={t.name}
               className="flex flex-col items-center p-8 border-4 border-black rounded-sm brutal-shadow hover:brutal-shadow-hover bg-[#e9d5ff] hover:scale-110 hover:-rotate-3 hover:translate-y-[-12px] transition-all duration-500 cursor-pointer group transform-gpu relative"

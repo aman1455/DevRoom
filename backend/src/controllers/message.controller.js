@@ -55,7 +55,6 @@ export const getMessages = async (req, res) => {
       { senderId: userId, receiverId: currentUserId, seen: false },
       { $set: { seen: true } },
     )
-
     res.status(200).json(messages)
   } catch (error) {
     console.error("Error fetching messages:", error)

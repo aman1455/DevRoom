@@ -31,8 +31,6 @@ async function fetcher(
   options: RequestInit = {},
   base: "auth" | "messages" = "messages",
 ) {
-  console.log(path)
-
   const headers: any = {
     "Content-Type": "application/json",
     ...(options.headers || {}),

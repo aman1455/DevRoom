@@ -119,6 +119,16 @@ export const checkAuth = (req, res) => {
   }
 }
 
+export const GetAllUsers = async (req, res) => {
+  try {
+    const users = await User.find()
+    res.status(200).json({users: users})
+  } catch (error) {
+    console.error("Error fetching users:", error)
+    res.status(500).json({ message: "Internal server error." })
+  }
+}
+
 // Controller to update user profile
 export const updateProfile = async (req, res) => {
   const { name, avatarUrl, bio } = req.body

@@ -50,7 +50,7 @@ export const MessageProvider = ({
   // helper to update the online statuses
   const applyOnlineStatus = useCallback(
     (usersList: any[], onlineIds: string[]) => {
-      return usersList.map((user) => {
+      return usersList?.map((user) => {
         const userId = (user._id || user.id)?.toString()
         const isOnline = onlineIds.some(
           (onlineId) => onlineId.toString() === userId,
@@ -85,15 +85,16 @@ export const MessageProvider = ({
     fetchUsers()
   }, [fetchUsers])
 
+
   // Fetch messages for selected user (marks unseen as seen)
   const fetchMessages = useCallback(
     (userId: string) => {
       if (!userId) return
       setLoadingMessages(true)
       api
-        .get(`/${userId}`)
+        .get(`/${userId}`, "messages")
         .then((msgs) => {
-          setMessages(msgs)
+          setMessages(msgs || [])
           // Mark unseen messages as seen (for current user)
           let anySeen = false
           msgs.forEach((msg: any) => {
@@ -212,7 +213,7 @@ export const MessageProvider = ({
     const handleGetOnlineUsers = (onlineUserIds: string[]) => {
       setOnlineUsers(onlineUserIds)
       setUsers((prevUsers: any[]) => {
-        if (prevUsers.length === 0) {
+        if (prevUsers?.length === 0) {
           console.log("No users loaded yet")
           return prevUsers
         }
@@ -220,6 +221,7 @@ export const MessageProvider = ({
       })
     }
     socket.on("getOnlineUsers", handleGetOnlineUsers)
+
     return () => {
       socket.off("getOnlineUsers", handleGetOnlineUsers)
     }
@@ -227,7 +229,7 @@ export const MessageProvider = ({
 
   // Automatically select the first user if none is selected and users are loaded
   useEffect(() => {
-    if (!selectedUser && users.length > 0) {
+    if (!selectedUser && users?.length > 0) {
       setSelectedUser(users[0])
     }
   }, [users, selectedUser])

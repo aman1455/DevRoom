@@ -41,7 +41,7 @@ function SignupPageContent() {
     e.preventDefault()
     const errs = validate()
     setErrors(errs)
-    if (Object.keys(errs).length) return
+    if (Object.keys(errs)?.length) return
     setLoading(true)
     try {
       await signup(form)

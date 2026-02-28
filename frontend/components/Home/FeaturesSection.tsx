@@ -56,11 +56,11 @@ export default function FeaturesSection() {
           Features
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {features.map((f, i) => (
+          {features?.map((f, i) => (
             <div
               key={f.title}
               className={`flex flex-col items-start p-8 border-4 border-black rounded-sm brutal-shadow hover:brutal-shadow-hover hover:scale-110 hover:-rotate-3 hover:translate-y-[-8px] transition-all duration-500 cursor-pointer group transform-gpu hover:z-10 relative ${
-                bgColors[i % bgColors.length]
+                bgColors[i % bgColors?.length]
               }`}
               style={{
                 transformOrigin: "center center",
