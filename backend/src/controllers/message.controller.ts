@@ -1,16 +1,34 @@
-import Message from "../models/Message.js"
-import User from "../models/User.js"
-import cloudinary from "../lib/cloudinary.js"
-import { io, userSocketMap } from "../server.js"
+import { Request, Response } from "express"
+import Message from "../models/Message"
+import User from "../models/User"
+import cloudinary from "../lib/cloudinary"
+const cl = cloudinary as any
+import { io, userSocketMap } from "../server"
+import { Types } from "mongoose"
 
-export const getUserForSidebar = async (req, res) => {
+// Request body types
+interface SendMessageBody {
+  text?: string
+  image?: string
+}
+
+interface SendRoomMessageBody {
+  text?: string
+  image?: string
+  fileUrl?: string
+  fileName?: string
+  fileType?: string
+  language?: string
+}
+
+export const getUserForSidebar = async (req: Request, res: Response) => {
   try {
-    const userId = req.user._id // Get the user ID from the request object
+    const userId = req.user!._id // Get the user ID from the request object
     const filteredUser = await User.find({ _id: { $ne: userId } }).select(
       "-password",
     )
 
-    const unseenMessages = {}
+    const unseenMessages: Record<string, number> = {}
 
     const promises = filteredUser.map(async (user) => {
       const message = await Message.find({
@@ -19,9 +37,9 @@ export const getUserForSidebar = async (req, res) => {
         seen: false,
       })
       if (message.length > 0) {
-        unseenMessages[user._id] = message.length
+        unseenMessages[user._id.toString()] = message.length
       } else {
-        unseenMessages[user._id] = 0
+        unseenMessages[user._id.toString()] = 0
       }
     })
 
@@ -36,11 +54,11 @@ export const getUserForSidebar = async (req, res) => {
   }
 }
 
-// get all messages for slected user
-export const getMessages = async (req, res) => {
+// Get all messages for selected user
+export const getMessages = async (req: Request, res: Response) => {
   try {
     const { userId } = req.params // Get the userId from the request parameters
-    const currentUserId = req.user._id // Get the current user's ID from the request object
+    const currentUserId = req.user!._id // Get the current user's ID from the request object
 
     // Find messages between the current user and the selected user
     const messages = await Message.find({
@@ -62,8 +80,8 @@ export const getMessages = async (req, res) => {
   }
 }
 
-// api to mark messages as seen using messageId
-export const markMessagesAsSeen = async (req, res) => {
+// API to mark messages as seen using messageId
+export const markMessagesAsSeen = async (req: Request, res: Response) => {
   try {
     const { messageId } = req.params // Get the messageId from the request parameters
     // Update the message to mark it as seen
@@ -86,23 +104,23 @@ export const markMessagesAsSeen = async (req, res) => {
   }
 }
 
-// send message to selected user
-export const sendMessage = async (req, res) => {
+// Send message to selected user
+export const sendMessage = async (req: Request<{ receiverId: string }, {}, SendMessageBody>, res: Response) => {
   try {
     const { text, image } = req.body // Get the message text and image from the request body
     const receiverId = req.params.receiverId // Get the receiver's userId from the request parameter
-    const senderId = req.user._id // Get the sender's userId from the
+    const senderId = req.user!._id // Get the sender's userId from the
 
-    let imageUrl
+    let imageUrl: string | undefined
     if (image) {
-      const uploadedImage = await cloudinary.uploader.upload(image)
+      const uploadedImage = await cl.uploader.upload(image)
       imageUrl = uploadedImage.secure_url // Get the secure URL of the uploaded image
     }
 
     const newMessage = await Message.create({
       senderId,
       receiverId,
-      text,
+      text: text || "",
       image: imageUrl || "",
     })
 

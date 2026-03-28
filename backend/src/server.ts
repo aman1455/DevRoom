@@ -2,13 +2,15 @@ import express from "express"
 import "dotenv/config"
 import cors from "cors"
 import http from "http"
-import { connectDB } from "./lib/db.js"
-import userRouter from "../src/routes/user.routes.js"
-import messageRouter from "./routes/message.routes.js"
-import roomRouter from "./routes/room.routes.js"
-import executionRouter from "./routes/execution.routes.js"
-import fileRouter from "./routes/file.routes.js"
-import { Server } from "socket.io"
+import { connectDB } from "./lib/db"
+import userRouter from "./routes/user.routes"
+import messageRouter from "./routes/message.routes"
+import roomRouter from "./routes/room.routes"
+import executionRouter from "./routes/execution.routes"
+import fileRouter from "./routes/file.routes"
+import { Server, Socket } from "socket.io"
+import { Request, Response, NextFunction } from "express"
+import { Types } from "mongoose"
 
 const app = express()
 const server = http.createServer(app)
@@ -16,12 +18,12 @@ const server = http.createServer(app)
 const { CLIENT_URL, NODE_ENV, PORT } = process.env
 
 // 1. Configure Allowed Origins
-const allowedOrigins = [
+const allowedOrigins: string[] = [
   CLIENT_URL,
   // Add localhost for local development
-  "http://localhost:3000", 
-  "http://localhost:5173" 
-].filter(Boolean)
+  "http://localhost:3000",
+  "http://localhost:5173",
+].filter((origin): origin is string => Boolean(origin))
 
 if (!CLIENT_URL && NODE_ENV === "production") {
   console.error(
@@ -31,7 +33,7 @@ if (!CLIENT_URL && NODE_ENV === "production") {
 
 // 2. Configure CORS
 const corsOptions = {
-  origin(origin, callback) {
+  origin(origin: string | undefined, callback: (error: Error | null, success?: boolean) => void) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true)
     if (allowedOrigins.includes(origin)) return callback(null, true)
@@ -46,7 +48,7 @@ app.use(cors(corsOptions))
 app.options("*", cors(corsOptions))
 
 // 3. Socket.IO Setup
-// NOTE: This works locally. On Vercel, WebSocket connections often fail 
+// NOTE: This works locally. On Vercel, WebSocket connections often fail
 // because Vercel functions are serverless and do not keep connections open.
 export const io = new Server(server, {
   cors: {
@@ -56,12 +58,12 @@ export const io = new Server(server, {
   },
 })
 
-export const userSocketMap = {} // { userId: [socketId, ...] }
-export const roomSocketMap = {} // { roomId: [socketId, ...] }
-export const userRoomMap = {}   // { userId: Set(roomId, ...) }
+export const userSocketMap: Record<string, string[]> = {} // { userId: [socketId, ...] }
+export const roomSocketMap: Record<string, string[]> = {} // { roomId: [socketId, ...] }
+export const userRoomMap: Record<string, Set<string>> = {} // { userId: Set(roomId, ...) }
 
-io.on("connection", (socket) => {
-  const userId = socket.handshake.query.userId
+io.on("connection", (socket: Socket) => {
+  const userId = socket.handshake.query.userId as string | undefined
 
   if (userId) {
     if (!userSocketMap[userId]) {
@@ -80,7 +82,7 @@ io.on("connection", (socket) => {
   io.emit("getOnlineUsers", Object.keys(userSocketMap))
 
   // Room events
-  socket.on("join-room", (roomId) => {
+  socket.on("join-room", (roomId: string) => {
     if (!userId) return
     socket.join(roomId)
 
@@ -98,7 +100,7 @@ io.on("connection", (socket) => {
     console.log(`User ${userId} joined room ${roomId}`)
   })
 
-  socket.on("leave-room", (roomId) => {
+  socket.on("leave-room", (roomId: string) => {
     if (!userId) return
     socket.leave(roomId)
 
@@ -118,7 +120,7 @@ io.on("connection", (socket) => {
     console.log(`User ${userId} left room ${roomId}`)
   })
 
-  socket.on("typing", (data) => {
+  socket.on("typing", (data: { roomId: string; isTyping: boolean }) => {
     const { roomId, isTyping } = data
     if (!userId) return
     // Broadcast typing status to room
@@ -128,7 +130,7 @@ io.on("connection", (socket) => {
     })
   })
 
-  socket.on("code-change", (data) => {
+  socket.on("code-change", (data: { roomId: string; code: string; language: string }) => {
     const { roomId, code, language } = data
     if (!userId) return
     // Broadcast code changes to other room members
@@ -173,7 +175,7 @@ io.on("connection", (socket) => {
 app.use(express.json({ limit: "4mb" }))
 
 // 4. Routes
-app.use("/api/status", (req, res) => {
+app.use("/api/status", (req: Request, res: Response) => {
   res.status(200).json({ status: "ok" })
 })
 app.use("/api/v1/auth", userRouter)
@@ -181,7 +183,7 @@ app.use("/api/v1/messages", messageRouter)
 app.use("/api/v1/rooms", roomRouter)
 app.use("/api/v1/execution", executionRouter)
 app.use("/api/v1/files", fileRouter)
-app.use("/", (req, res) => {
+app.use("/", (req: Request, res: Response) => {
   res.send("DevRoom API is running")
 })
 
@@ -198,7 +200,7 @@ connectDB().then(() => {
 // Only run server.listen if we are LOCALLY developing.
 // Vercel handles the server start automatically, so calling listen() there causes a timeout/crash.
 if (NODE_ENV !== "production") {
-  const port = PORT || 8080
+  const port = PORT ? parseInt(PORT) : 8080
   server.listen(port, () => {
     console.log(`Server is running on port ${port}`)
   })

@@ -1,14 +1,14 @@
-import express from "express"
+import { Router } from "express"
 import {
   checkAuth,
   GetAllUsers,
   login,
   signup,
   updateProfile,
-} from "../controllers/user.controller.js"
-import { protectRoute } from "../middleware/auth.js"
+} from "../controllers/user.controller"
+import { protectRoute } from "../middleware/auth"
 
-const userRouter = express.Router()
+const userRouter = Router()
 
 userRouter.post("/login", login)
 userRouter.post("/signup", signup)

@@ -5,6 +5,15 @@ const BASES = {
   messages:
     process.env.NEXT_PUBLIC_MESSAGES_API_BASE ||
     "http://localhost:8080/api/v1/messages",
+  rooms:
+    process.env.NEXT_PUBLIC_ROOMS_API_BASE ||
+    "http://localhost:8080/api/v1/rooms",
+  execution:
+    process.env.NEXT_PUBLIC_EXECUTION_API_BASE ||
+    "http://localhost:8080/api/v1/execution",
+  files:
+    process.env.NEXT_PUBLIC_FILES_API_BASE ||
+    "http://localhost:8080/api/v1/files",
 }
 
 let token: string | null = null

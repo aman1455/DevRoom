@@ -46,3 +46,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Claude Code
+/.claude
+
+# Backend build output
+/backend/dist/
+
+# Additional Next.js environment files
+.env.development
+.env.test
+.env.production

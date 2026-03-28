@@ -1,9 +1,29 @@
-import User from "../models/User.js"
-import { generateToken } from "../lib/utils.js"
+import { Request, Response } from "express"
+import User from "../models/User"
+import { generateToken } from "../lib/utils"
+import cloudinary from "../lib/cloudinary"
 import bcrypt from "bcryptjs"
-import cloudinary from "../lib/cloudinary.js"
+import { Types } from "mongoose"
 
-export const signup = async (req, res) => {
+// Define request body types
+interface SignupRequestBody {
+  email: string
+  password: string
+  name: string
+  profilPic?: string
+  bio?: string
+}
+
+interface UpdateProfileRequestBody {
+  name?: string
+  avatarUrl?: string
+  bio?: string
+}
+
+// Cast cloudinary to any to bypass type issues
+const cl = cloudinary as any
+
+export const signup = async (req: Request<{}, {}, SignupRequestBody>, res: Response) => {
   const { email, password, name, profilPic, bio } = req.body
 
   try {
@@ -41,7 +61,7 @@ export const signup = async (req, res) => {
     res.status(201).json({
       message: "User created successfully.",
       user: {
-        id: newUser._id,
+        id: newUser._id.toString(),
         email: newUser.email,
         name: newUser.name,
         avatarUrl: newUser.avatarUrl,
@@ -55,7 +75,7 @@ export const signup = async (req, res) => {
   }
 }
 
-export const login = async (req, res) => {
+export const login = async (req: Request<{}, {}, { email: string; password: string }>, res: Response) => {
   const { email, password } = req.body
 
   try {
@@ -84,7 +104,7 @@ export const login = async (req, res) => {
     res.status(200).json({
       message: "Login successful.",
       user: {
-        id: user._id,
+        id: user._id.toString(),
         email: user.email,
         name: user.name,
         avatarUrl: user.avatarUrl,
@@ -98,7 +118,7 @@ export const login = async (req, res) => {
   }
 }
 
-export const checkAuth = (req, res) => {
+export const checkAuth = (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ message: "Not authorized." })
@@ -106,7 +126,7 @@ export const checkAuth = (req, res) => {
 
     res.status(200).json({
       user: {
-        id: req.user._id,
+        id: req.user._id.toString(),
         email: req.user.email,
         name: req.user.name,
         avatarUrl: req.user.avatarUrl,
@@ -119,10 +139,18 @@ export const checkAuth = (req, res) => {
   }
 }
 
-export const GetAllUsers = async (req, res) => {
+export const GetAllUsers = async (req: Request, res: Response) => {
   try {
-    const users = await User.find()
-    res.status(200).json({users: users})
+    const users = await User.find().select("-password")
+    res.status(200).json({
+      users: users.map(user => ({
+        _id: user._id.toString(),
+        email: user.email,
+        name: user.name,
+        avatarUrl: user.avatarUrl,
+        bio: user.bio,
+      }))
+    })
   } catch (error) {
     console.error("Error fetching users:", error)
     res.status(500).json({ message: "Internal server error." })
@@ -130,9 +158,9 @@ export const GetAllUsers = async (req, res) => {
 }
 
 // Controller to update user profile
-export const updateProfile = async (req, res) => {
+export const updateProfile = async (req: Request<{}, {}, UpdateProfileRequestBody>, res: Response) => {
   const { name, avatarUrl, bio } = req.body
-  const userId = req.user._id // Assuming user ID is available in req.user
+  const userId = req.user!._id
   let updatedData
 
   try {
@@ -140,26 +168,26 @@ export const updateProfile = async (req, res) => {
       updatedData = await User.findByIdAndUpdate(
         userId,
         { name, bio },
-        { new: true },
-      )
+        { new: true }
+      ).select("-password")
     } else {
-      const uploadedImage = await cloudinary.uploader.upload(avatarUrl)
+      const uploadedImage = await cl.uploader.upload(avatarUrl)
 
       updatedData = await User.findByIdAndUpdate(
         userId,
         { name, avatarUrl: uploadedImage.secure_url, bio },
-        { new: true },
-      )
+        { new: true }
+      ).select("-password")
     }
 
     res.status(200).json({
       message: "Profile updated successfully.",
       user: {
-        id: updatedData._id,
-        email: updatedData.email,
-        name: updatedData.name,
-        avatarUrl: updatedData.avatarUrl,
-        bio: updatedData.bio,
+        id: updatedData!._id.toString(),
+        email: updatedData!.email,
+        name: updatedData!.name,
+        avatarUrl: updatedData!.avatarUrl,
+        bio: updatedData!.bio,
       },
     })
   } catch (error) {
