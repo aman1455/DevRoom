@@ -8,6 +8,7 @@ export interface IUser {
   avatarUrl: string
   bio?: string
   rooms: Types.ObjectId[]
+  invites: Types.ObjectId[] // Room invite references
   createdAt: Date
   updatedAt: Date
 }
@@ -35,6 +36,13 @@ export interface IRoomMember {
   joinedAt: Date
 }
 
+export interface IInvite {
+  user: Types.ObjectId
+  invitedBy: Types.ObjectId
+  status: "pending" | "accepted" | "rejected"
+  invitedAt: Date
+}
+
 export interface IInterviewSettings {
   question: string
   duration: number
@@ -52,6 +60,7 @@ export interface IRoom {
   type: "group" | "interview"
   interviewSettings: IInterviewSettings
   members: IRoomMember[]
+  invites: IInvite[]
   messages: Types.ObjectId[]
   createdAt: Date
   updatedAt: Date

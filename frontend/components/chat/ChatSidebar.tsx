@@ -5,16 +5,12 @@ export default function ChatSidebar({
   users,
   selectedUser,
   onUserSelect,
-  onProfile,
-  onLogout,
   search,
   setSearch,
 }: {
   users: any[]
   selectedUser: any
   onUserSelect: (user: any) => void
-  onProfile: () => void
-  onLogout: () => void
   search: string
   setSearch: (s: string) => void
 }) {
@@ -23,7 +19,7 @@ export default function ChatSidebar({
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 py-4 border-b-2 border-sidebar-border ">
         <div className="w-8 h-8 bg-[#39ff14] rounded-lg flex items-center justify-center text-xl font-extrabold border-2 border-sidebar-border  select-none">
-          N
+          D
         </div>
         <span className="inline text-xl font-extrabold tracking-tight text-primary">
           DevRoom
@@ -83,21 +79,6 @@ export default function ChatSidebar({
           </li>
         ))}
       </ul>
-      {/* Profile/Logout */}
-      <div className="flex flex-col gap-2 p-4 border-t-2 border-sidebar-border ">
-        <button
-          onClick={onProfile}
-          className="w-full py-2 rounded-lg border-2 border-sidebar-border  bg-sidebar-accent text-primary font-bold hover:bg-[#b39ddb]"
-        >
-          Profile
-        </button>
-        <button
-          onClick={onLogout}
-          className="w-full py-2 rounded-lg border-2 border-sidebar-border  bg-sidebar-accent text-primary font-bold hover:bg-red-500 hover:text-white"
-        >
-          Logout
-        </button>
-      </div>
     </aside>
   )
 }

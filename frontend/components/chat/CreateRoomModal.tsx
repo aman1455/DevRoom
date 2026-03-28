@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { useRoom } from "@/app/RoomContext"
 import { useAuth } from "@/app/AuthContext"
 import { api } from "@/app/fetcher"
@@ -13,6 +14,7 @@ interface CreateRoomModalProps {
 }
 
 export default function CreateRoomModal({ open, onClose }: CreateRoomModalProps) {
+  const router = useRouter()
   const { createRoom } = useRoom()
   const { user } = useAuth()
   const [name, setName] = useState("")
@@ -73,7 +75,7 @@ export default function CreateRoomModal({ open, onClose }: CreateRoomModalProps)
 
     setLoading(true)
     try {
-      await createRoom({
+      const room = await createRoom({
         name: name.trim(),
         description: description.trim(),
         type,
@@ -86,6 +88,8 @@ export default function CreateRoomModal({ open, onClose }: CreateRoomModalProps)
         memberIds,
       })
       handleClose()
+      // Navigate to the newly created room
+      router.push(`/rooms/${room._id}`)
     } catch (err) {
       // Error already shown in createRoom
     } finally {

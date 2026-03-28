@@ -11,6 +11,7 @@ import FilePreview from "@/components/chat/FilePreview"
 import UsersList from "@/components/rooms/UsersList"
 import { toast } from "sonner"
 import { ArrowLeft, MessageSquare, Code, Files, Users } from "lucide-react"
+import NotificationBell from "@/components/chat/NotificationBell"
 import { cn } from "@/lib/utils"
 
 type Tab = "chat" | "code" | "files" | "members"
@@ -23,12 +24,13 @@ function RoomDetailContent() {
 
   const [activeTab, setActiveTab] = useState<Tab>("chat")
 
-  // Load room data
+  // Load room data - only if we don't already have the room
   useEffect(() => {
-    if (roomId) {
-      fetchRoom && fetchRoom(roomId as string)
+    if (roomId && (!selectedRoom || selectedRoom._id !== roomId)) {
+      fetchRoom?.(roomId as string)
     }
-  }, [roomId, fetchRoom])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId, fetchRoom, selectedRoom?._id])
 
   if (!selectedRoom) {
     return (
@@ -61,6 +63,7 @@ function RoomDetailContent() {
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
+        {/* <NotificationBell /> */}
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-[#39ff14] flex items-center justify-center text-xl font-extrabold border-2 border-sidebar-border overflow-hidden">
             {selectedRoom.avatarUrl ? (

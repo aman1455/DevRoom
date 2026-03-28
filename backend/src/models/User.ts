@@ -28,6 +28,10 @@ const userSchema = new Schema<IUser>({
     type: Schema.Types.ObjectId,
     ref: "Room",
   }],
+  invites: [{
+    type: Schema.Types.ObjectId,
+    ref: "Room",
+  }],
 }, { timestamps: true })
 
 const User = mongoose.model<IUser>("User", userSchema)

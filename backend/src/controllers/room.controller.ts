@@ -640,3 +640,217 @@ export const getRoomMembers = async (req: Request<{ roomId: string }>, res: Resp
     res.status(500).json({ message: "Internal server error." })
   }
 }
+
+// Get user's pending invites
+export const getPendingInvites = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!._id
+
+    // Find rooms where this user has pending invites
+    const rooms = await Room.find({
+      "invites.user": userId,
+      "invites.status": "pending",
+    })
+      .populate("creatorId", "name avatarUrl email")
+      .populate("invites.user", "name avatarUrl email")
+
+    // Extract only the pending invite for this user from each room
+    const pendingInvites = rooms.map((room) => {
+      const invite = room.invites.find((inv) => inv.user._id.toString() === userId.toString() && inv.status === "pending")
+      return {
+        roomId: room._id,
+        roomName: room.name,
+        roomDescription: room.description,
+        roomAvatar: room.avatarUrl,
+        roomType: room.type,
+        invitedBy: invite?.invitedBy || room.creatorId,
+        invitedAt: invite?.invitedAt,
+      }
+    })
+
+    res.status(200).json({ pendingInvites })
+  } catch (error) {
+    console.error("Error fetching pending invites:", error)
+    res.status(500).json({ message: "Internal server error." })
+  }
+}
+
+// Invite a member to a room
+export const inviteMember = async (req: Request<{ roomId: string }, {}, { userId: string }>, res: Response) => {
+  try {
+    const { roomId } = req.params
+    const { userId } = req.body
+    const inviterId = req.user!._id
+
+    const room = await Room.findById(roomId)
+    if (!room) {
+      return res.status(404).json({ message: "Room not found." })
+    }
+
+    // Authorization: Only creator or admin can invite
+    const isCreator = room.creatorId.toString() === inviterId.toString()
+    const member = room.members.find((m) => m.user.toString() === inviterId.toString())
+    const isAdmin = member && ["admin", "interviewer"].includes(member.role)
+    if (!isCreator && !isAdmin) {
+      return res.status(403).json({ message: "Only room creator or admin can invite members." })
+    }
+
+    // Check if user is a member already
+    const isAlreadyMember = room.members.some((m) => m.user.toString() === userId)
+    if (isAlreadyMember) {
+      return res.status(400).json({ message: "User is already a member." })
+    }
+
+    // Check if invite already exists
+    const existingInvite = room.invites.find((inv) => inv.user.toString() === userId && inv.status === "pending")
+    if (existingInvite) {
+      return res.status(400).json({ message: "Invite already pending." })
+    }
+
+    // Add invite
+    room.invites.push({
+      user: new Types.ObjectId(userId),
+      invitedBy: inviterId,
+      status: "pending",
+      invitedAt: new Date(),
+    })
+    await room.save()
+
+    // Add room reference to user's invites
+    await User.findByIdAndUpdate(userId, { $push: { invites: room._id } })
+
+    // Get inviter and invitee details for notification
+    const inviter = await User.findById(inviterId).select("name avatarUrl")
+    const invitee = await User.findById(userId).select("name avatarUrl")
+
+    // Notify invited user via socket
+    const socketIds = userSocketMap[userId.toString()]
+    if (socketIds) {
+      socketIds.forEach((socketId: string) => {
+        io.to(socketId).emit("roomInvite", {
+          roomId,
+          room: {
+            _id: room._id,
+            name: room.name,
+            description: room.description,
+            avatarUrl: room.avatarUrl,
+            type: room.type,
+          },
+          invitedBy: {
+            _id: inviterId,
+            name: inviter?.name || "Unknown",
+            avatarUrl: inviter?.avatarUrl,
+          },
+        })
+      })
+    }
+
+    // Also notify inviter that invite was sent
+    if (socketIds) {
+      // Already got socketIds above
+    }
+
+    res.status(200).json({
+      message: "Invite sent successfully.",
+      room,
+    })
+  } catch (error) {
+    console.error("Error inviting member:", error)
+    res.status(500).json({ message: "Internal server error." })
+  }
+}
+
+// Accept room invite
+export const acceptInvite = async (req: Request<{ roomId: string }>, res: Response) => {
+  try {
+    const { roomId } = req.params
+    const userId = req.user!._id
+
+    const room = await Room.findById(roomId)
+    if (!room) {
+      return res.status(404).json({ message: "Room not found." })
+    }
+
+    // Find the invite
+    const inviteIndex = room.invites.findIndex((inv) => inv.user.toString() === userId.toString() && inv.status === "pending")
+    if (inviteIndex === -1) {
+      return res.status(404).json({ message: "Invite not found or already processed." })
+    }
+
+    // Update invite status
+    room.invites[inviteIndex].status = "accepted"
+    await room.save()
+
+    // Add user as member with appropriate role
+    room.members.push({
+      user: userId,
+      role: room.type === "interview" ? "candidate" : "member",
+      joinedAt: new Date(),
+    })
+    await room.save()
+
+    // Add room to user's rooms array
+    await User.findByIdAndUpdate(userId, {
+      $push: { rooms: room._id },
+      $pull: { invites: room._id },
+    })
+
+    // Populate for response
+    await room.populate("creatorId", "name avatarUrl email")
+    await room.populate("members.user", "name avatarUrl email")
+
+    // Notify all room members (including the new member)
+    room.members.forEach((m) => {
+      const socketIds = userSocketMap[m.user.toString()]
+      if (socketIds) {
+        socketIds.forEach((socketId: string) => {
+          io.to(socketId).emit("roomUpdated", {
+            roomId,
+            room,
+          })
+        })
+      }
+    })
+
+    res.status(200).json({
+      message: "Invite accepted. You have joined the room.",
+      room,
+    })
+  } catch (error) {
+    console.error("Error accepting invite:", error)
+    res.status(500).json({ message: "Internal server error." })
+  }
+}
+
+// Reject room invite
+export const rejectInvite = async (req: Request<{ roomId: string }>, res: Response) => {
+  try {
+    const { roomId } = req.params
+    const userId = req.user!._id
+
+    const room = await Room.findById(roomId)
+    if (!room) {
+      return res.status(404).json({ message: "Room not found." })
+    }
+
+    // Find the invite
+    const inviteIndex = room.invites.findIndex((inv) => inv.user.toString() === userId.toString() && inv.status === "pending")
+    if (inviteIndex === -1) {
+      return res.status(404).json({ message: "Invite not found or already processed." })
+    }
+
+    // Update invite status
+    room.invites[inviteIndex].status = "rejected"
+    await room.save()
+
+    // Remove room from user's invites array
+    await User.findByIdAndUpdate(userId, { $pull: { invites: room._id } })
+
+    res.status(200).json({
+      message: "Invite rejected.",
+    })
+  } catch (error) {
+    console.error("Error rejecting invite:", error)
+    res.status(500).json({ message: "Internal server error." })
+  }
+}

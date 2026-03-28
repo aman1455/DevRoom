@@ -7,6 +7,7 @@ import React, {
   useEffect,
   useCallback,
 } from "react"
+import { useRouter } from "next/navigation"
 import { api } from "./fetcher"
 import { useRoomSocket } from "@/hooks/useRoomSocket"
 import { useAuth } from "./AuthContext"
@@ -132,11 +133,16 @@ interface RoomContextType {
   executeCode: (language: string, code: string, stdin?: string) => Promise<ExecutionResult>
   sendTyping: (roomId: string, isTyping: boolean) => void
   sendCodeChange: (roomId: string, code: string, language: string) => void
+  acceptInvite: (roomId: string) => Promise<void>
+  rejectInvite: (roomId: string) => Promise<void>
+  pendingInvites: any[]
+  fetchPendingInvites: () => Promise<void>
 }
 
 const RoomContext = createContext<RoomContextType | null>(null)
 
 export function RoomProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter()
   const { user } = useAuth()
   const {
     joinRoom: socketJoinRoom,
@@ -151,6 +157,7 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
     onInterviewTimerUpdate,
     onInterviewSubmission,
     onRoomUpdated,
+    onRoomInvite,
   } = useRoomSocket(user?._id)
 
   const [rooms, setRooms] = useState<Room[]>([])
@@ -160,6 +167,7 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
   const [typingUsers, setTypingUsers] = useState<Record<string, boolean>>({})
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [pendingInvites, setPendingInvites] = useState<any[]>([])
 
   // Fetch rooms list
   const fetchRooms = useCallback(async () => {
@@ -228,7 +236,7 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
   }
 
   // Fetch messages for a room
-  const fetchMessages = async (roomId: string, page: number = 1) => {
+  const fetchMessages = useCallback(async (roomId: string, page: number = 1) => {
     setIsLoading(true)
     setError(null)
     try {
@@ -244,20 +252,31 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [api])
 
   // Fetch room members
-  const fetchMembers = async (roomId: string) => {
+  const fetchMembers = useCallback(async (roomId: string) => {
     try {
       const data = await api.get(`/${roomId}/members`, "rooms")
       setMembers(data.members || [])
     } catch (err: any) {
       toast.error(err.message || "Failed to load members")
     }
-  }
+  }, [api])
+
+  // Fetch pending invites
+  const fetchPendingInvites = useCallback(async () => {
+    if (!user) return
+    try {
+      const data = await api.get("/invites/pending", "rooms")
+      setPendingInvites(data.pendingInvites || [])
+    } catch (err: any) {
+      console.error("Failed to fetch pending invites:", err)
+    }
+  }, [user])
 
   // Fetch single room by ID and set as selected
-  const fetchRoom = async (roomId: string) => {
+  const fetchRoom = useCallback(async (roomId: string) => {
     setIsLoading(true)
     setError(null)
     try {
@@ -271,7 +290,7 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [fetchMessages, fetchMembers])
 
   // Send a message to a room
   const sendRoomMessage = async (
@@ -344,6 +363,31 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
       throw err
     }
   }
+
+  // Accept room invite
+  const acceptInvite = useCallback(async (roomId: string) => {
+    try {
+      await api.post(`/${roomId}/invite/accept`, {}, "rooms")
+      toast.success("Invite accepted! You have joined the room.")
+      await Promise.all([fetchRooms(), fetchPendingInvites()])
+      // Navigate to room - will be handled by the component via router
+    } catch (err: any) {
+      toast.error(err.message || "Failed to accept invite")
+      throw err
+    }
+  }, [api, fetchRooms, fetchPendingInvites])
+
+  // Reject room invite
+  const rejectInvite = useCallback(async (roomId: string) => {
+    try {
+      await api.post(`/${roomId}/invite/reject`, {}, "rooms")
+      toast.success("Invite rejected")
+      await fetchPendingInvites()
+    } catch (err: any) {
+      toast.error(err.message || "Failed to reject invite")
+      throw err
+    }
+  }, [api, fetchPendingInvites])
 
   // Execute code directly
   const executeCode = async (language: string, code: string, stdin?: string): Promise<ExecutionResult> => {
@@ -432,6 +476,50 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
       }
     })
 
+    const unsubscribeInvite = onRoomInvite((data: any) => {
+      // Show a notification toast with accept/reject options
+      const { room, invitedBy } = data
+      toast(
+        <div className="flex items-center gap-2">
+          <div>
+            <strong>{invitedBy?.name || "Someone"}</strong> invited you to join{" "}
+            <strong>{room?.name}</strong>
+          </div>
+          <button
+            onClick={() => {
+              acceptInvite(room._id)
+              router.push(`/rooms/${room._id}`)
+            }}
+            className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
+          >
+            Accept
+          </button>
+          <button
+            onClick={() => {
+              rejectInvite(room._id)
+            }}
+            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+          >
+            Reject
+          </button>
+        </div>,
+        {
+          duration: 10000, // 10 seconds
+        }
+      )
+
+      // Also add to pendingInvites state for the bell dropdown
+      setPendingInvites((prev) => [...prev, {
+        roomId: room._id,
+        roomName: room.name,
+        roomDescription: room.description,
+        roomAvatar: room.avatarUrl,
+        roomType: room.type,
+        invitedBy: invitedBy,
+        invitedAt: new Date(),
+      }])
+    })
+
     return () => {
       unsubscribeMessage()
       unsubscribeJoined()
@@ -441,6 +529,7 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
       unsubscribeTimer()
       unsubscribeSubmission()
       unsubscribeRoomUpdated()
+      unsubscribeInvite?.()
     }
   }, [
     selectedRoom,
@@ -452,6 +541,9 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
     onInterviewTimerUpdate,
     onInterviewSubmission,
     onRoomUpdated,
+    onRoomInvite,
+    acceptInvite,
+    rejectInvite,
   ])
 
   // Auto-join/leave room when selectedRoom changes
@@ -476,6 +568,7 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (user) {
       fetchRooms()
+      fetchPendingInvites()
     }
   }, [user, fetchRooms])
 
@@ -501,6 +594,10 @@ export function RoomProvider({ children }: { children: React.ReactNode }) {
         updateRoomSettings,
         controlInterviewTimer,
         submitInterviewCode,
+        acceptInvite,
+        rejectInvite,
+        pendingInvites,
+        fetchPendingInvites,
         executeCode,
         sendTyping: socketSendTyping,
         sendCodeChange: socketSendCodeChange,

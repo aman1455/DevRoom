@@ -1,26 +1,25 @@
 "use client"
 
 import React from "react"
+import { useRouter } from "next/navigation"
 import { useRoom } from "@/app/RoomContext"
 import { useAuth } from "@/app/AuthContext"
 import { cn } from "@/lib/utils"
 
 interface RoomSidebarProps {
   onOpenCreateRoom: () => void
-  onProfile: () => void
-  onLogout: () => void
 }
 
 export default function RoomSidebar({
   onOpenCreateRoom,
-  onProfile,
-  onLogout,
 }: RoomSidebarProps) {
+  const router = useRouter()
   const { rooms, selectedRoom, setSelectedRoom, isLoading } = useRoom()
   const { user } = useAuth()
 
   const handleRoomClick = (room: any) => {
     setSelectedRoom(room)
+    router.push(`/rooms/${room._id}`)
   }
 
   return (
@@ -95,7 +94,7 @@ export default function RoomSidebar({
                 </div>
 
                 {/* Unread Badge */}
-                {room.unreadCount > 0 && (
+                {(room.unreadCount || 0) > 0 && (
                   <span className="ml-2 px-2 py-0.5 rounded-full bg-[#b39ddb] text-black text-xs font-extrabold border-2 border-black">
                     {room.unreadCount}
                   </span>
@@ -105,22 +104,6 @@ export default function RoomSidebar({
           })
         )}
       </ul>
-
-      {/* Profile/Logout */}
-      <div className="flex flex-col gap-2 p-4 border-t-2 border-sidebar-border">
-        <button
-          onClick={onProfile}
-          className="w-full py-2 rounded-lg border-2 border-sidebar-border bg-sidebar-accent text-primary font-bold hover:bg-[#b39ddb]"
-        >
-          Profile
-        </button>
-        <button
-          onClick={onLogout}
-          className="w-full py-2 rounded-lg border-2 border-sidebar-border bg-sidebar-accent text-primary font-bold hover:bg-red-500 hover:text-white"
-        >
-          Logout
-        </button>
-      </div>
     </aside>
   )
 }

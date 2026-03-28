@@ -25,6 +25,8 @@ interface UseRoomSocketReturn {
   offInterviewSubmission: (callback: (data: any) => void) => void
   onRoomUpdated: (callback: (data: { roomId: string; room: any }) => void) => void
   offRoomUpdated: (callback: (data: { roomId: string; room: any }) => void) => void
+  onRoomInvite: (callback: (data: { roomId: string; room: any; invitedBy: any }) => void) => void
+  offRoomInvite: (callback: (data: { roomId: string; room: any; invitedBy: any }) => void) => void
 }
 
 export function useRoomSocket(userId?: string): UseRoomSocketReturn {
@@ -111,7 +113,16 @@ export function useRoomSocket(userId?: string): UseRoomSocketReturn {
     return () => socket?.off("roomUpdated", callback)
   }, [])
 
+  const onRoomInvite = useCallback((callback: (data: { roomId: string; room: any; invitedBy: any }) => void) => {
+    const socket = socketRef.current
+    socket?.on("roomInvite", callback)
+    return () => socket?.off("roomInvite", callback)
+  }, [])
+
   // Off wrappers (for cleanup)
+  const offRoomInvite = useCallback((callback: (data: { roomId: string; room: any; invitedBy: any }) => void) => {
+    socketRef.current?.off("roomInvite", callback)
+  }, [])
   const offUserTyping = useCallback((callback: (data: { userId: string; isTyping: boolean }) => void) => {
     socketRef.current?.off("userTyping", callback)
   }, [])
@@ -166,5 +177,7 @@ export function useRoomSocket(userId?: string): UseRoomSocketReturn {
     offInterviewSubmission,
     onRoomUpdated,
     offRoomUpdated,
+    onRoomInvite,
+    offRoomInvite,
   }
 }

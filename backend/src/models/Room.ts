@@ -62,6 +62,27 @@ const roomSchema = new Schema<IRoom>({
       default: Date.now,
     },
   }],
+  invites: [{
+    user: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    invitedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    status: {
+      type: String,
+      enum: ["pending", "accepted", "rejected"],
+      default: "pending",
+    },
+    invitedAt: {
+      type: Date,
+      default: Date.now,
+    },
+  }],
   messages: [{
     type: Schema.Types.ObjectId,
     ref: "Message",

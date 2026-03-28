@@ -2,8 +2,10 @@
 import React, { useRef, useEffect, useState } from "react"
 import { useMessageContext } from "../../app/MessageContext"
 import { useAuth } from "../../app/AuthContext"
+import { useRoom } from "@/app/RoomContext"
 import EmojiPicker from "emoji-picker-react"
 import { ModeToggle } from "../ui/mode-toggle"
+import NotificationBell from "./NotificationBell"
 
 export default function ChatPanel({
   selectedUser,
@@ -218,7 +220,10 @@ export default function ChatPanel({
                 : "offline"}
             </span>
           </div>
-          <ModeToggle />
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <ModeToggle />
+          </div>
         </div>
       </div>
       {/* Messages */}

@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
+import { useRouter } from "next/navigation"
 import ChatSidebar from "./ChatSidebar"
 import ChatPanel from "./ChatPanel"
 import RoomSidebar from "./RoomSidebar"
@@ -12,13 +13,15 @@ import { MessageProvider, useMessageContext } from "@/app/MessageContext"
 import { RoomProvider, useRoom } from "@/app/RoomContext"
 import { toast } from "sonner"
 import { MessageSquare, Users } from "lucide-react"
+import NotificationBell from "@/components/chat/NotificationBell"
 
 type Mode = "messages" | "rooms"
 
 const ChatPanels: React.FC = () => {
+  const router = useRouter()
   const { user, logout, updateProfile } = useAuth()
   const { selectedUser, setSelectedUser, loadingUsers, loadingMessages, error } = useMessageContext()
-  const { rooms, selectedRoom, setSelectedRoom } = useRoom()
+  const { setSelectedRoom } = useRoom()
 
   const [mode, setMode] = useState<Mode>("messages")
   const [search, setSearch] = useState("")
@@ -32,12 +35,6 @@ const ChatPanels: React.FC = () => {
     setSelectedUser(u)
     if (window.innerWidth < 768) setMobileView("chat")
     if (mode === "rooms") setMode("messages") // Switch to messages mode
-  }
-
-  function handleRoomClick(room: any) {
-    setSelectedRoom(room)
-    if (window.innerWidth < 768) setMobileView("chat")
-    if (mode === "messages") setMode("rooms")
   }
 
   function handleBackFromChat() {
@@ -86,71 +83,85 @@ const ChatPanels: React.FC = () => {
     <div className="flex flex-col md:flex-row h-screen w-screen font-sans bg-gradient-to-br from-[#b39ddb]/40 via-white to-[#39ff14]/20 text-black relative overflow-hidden">
       {/* Sidebar */}
       <div
-        className={`h-full w-full md:w-80 ${
+        className={`h-full w-full md:w-80 flex flex-col ${
           mobileView === "chat" ? "hidden md:block" : ""
         }`}
       >
-        {/* Mode Toggle */}
-        <div className="flex border-b-2 border-sidebar-border">
-          <button
-            onClick={() => setMode("messages")}
-            className={`flex-1 py-3 font-bold text-sm flex items-center justify-center gap-2 ${
-              mode === "messages"
-                ? "bg-sidebar text-[#39ff14] border-b-2 border-[#39ff14]"
-                : "text-gray-600 hover:bg-[#f3e8ff]"
-            }`}
-          >
-            <MessageSquare className="w-4 h-4" />
-            Messages
-          </button>
-          <button
-            onClick={() => setMode("rooms")}
-            className={`flex-1 py-3 font-bold text-sm flex items-center justify-center gap-2 ${
-              mode === "rooms"
-                ? "bg-sidebar text-[#39ff14] border-b-2 border-[#39ff14]"
-                : "text-gray-600 hover:bg-[#f3e8ff]"
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            Rooms
-          </button>
+        {/* Dynamic Sidebar Content */}
+        <div className="flex-1 overflow-hidden">
+          {mode === "messages" ? (
+            <ChatSidebar
+              users={filteredUsers}
+              selectedUser={currentSelectedUser || {}}
+              onUserSelect={handleUserClick}
+              search={search}
+              setSearch={setSearch}
+            />
+          ) : (
+            <RoomSidebar
+              onOpenCreateRoom={() => setShowCreateRoom(true)}
+            />
+          )}
         </div>
 
-        {/* Dynamic Sidebar Content */}
-        {mode === "messages" ? (
-          <ChatSidebar
-            users={filteredUsers}
-            selectedUser={currentSelectedUser || {}}
-            onUserSelect={handleUserClick}
-            onProfile={() => {
-              setProfileDraft({
-                name: user?.name || "",
-                bio: user?.bio || "",
-                avatarUrl: user?.avatarUrl || "",
-              })
-              setShowProfile(true)
-            }}
-            onLogout={handleLogout}
-            search={search}
-            setSearch={setSearch}
-          />
-        ) : (
-          <RoomSidebar
-            onOpenCreateRoom={() => setShowCreateRoom(true)}
-            onProfile={() => {
-              setProfileDraft({
-                name: user?.name || "",
-                bio: user?.bio || "",
-                avatarUrl: user?.avatarUrl || "",
-              })
-              setShowProfile(true)
-            }}
-            onLogout={handleLogout}
-          />
-        )}
         {mode === "messages" && loadingUsers && (
           <div className="p-4 text-center">Loading users...</div>
         )}
+
+        {/* Bottom Navigation Bar */}
+        <div className="border-t-2 border-sidebar-border bg-[#e9d5ff] dark:bg-background">
+          {/* Mode Toggle */}
+          <div className="flex border-b-2 border-sidebar-border">
+            <button
+              onClick={() => setMode("messages")}
+              className={`flex-1 py-3 font-bold text-sm flex items-center justify-center gap-2 ${
+                mode === "messages"
+                  ? "bg-sidebar text-[#39ff14] border-b-2 border-[#39ff14]"
+                  : "text-gray-600 hover:bg-[#f3e8ff]"
+              }`}
+            >
+              <MessageSquare className="w-4 h-4" />
+              Messages
+            </button>
+            <button
+              onClick={() => setMode("rooms")}
+              className={`flex-1 py-3 font-bold text-sm flex items-center justify-center gap-2 ${
+                mode === "rooms"
+                  ? "bg-sidebar text-[#39ff14] border-b-2 border-[#39ff14]"
+                  : "text-gray-600 hover:bg-[#f3e8ff]"
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              Rooms
+            </button>
+          </div>
+
+          {/* Notifications & Actions */}
+          <div className="flex flex-col gap-2 p-4">
+            {/* <div className="flex justify-center mb-2">
+              <NotificationBell />
+            </div> */}
+            <button
+              onClick={() => {
+                setProfileDraft({
+                  name: user?.name || "",
+                  bio: user?.bio || "",
+                  avatarUrl: user?.avatarUrl || "",
+                })
+                setShowProfile(true)
+              }}
+              className="w-full py-2 rounded-lg border-2 border-sidebar-border bg-sidebar-accent text-primary font-bold hover:bg-[#b39ddb]"
+            >
+              Profile
+            </button>
+            <button
+              onClick={handleLogout}
+              className="w-full py-2 rounded-lg border-2 border-sidebar-border bg-sidebar-accent text-primary font-bold hover:bg-red-500 hover:text-white"
+            >
+              Logout
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Main Content */}
